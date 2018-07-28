@@ -35,14 +35,34 @@ public $successStatus = 200;
          
     }
     
+    public function viewPost(Request $request){ 
+        
+        $id = $request->get('query');
+
+        $post = DB::table('post')
+                ->where('id',$id)
+                ->orderBy('created_at', 'desc')
+                ->get(['id','title','description','created_at']);    
+        
+        return response()->json(['data'=> $post], $this-> successStatus); 
+         
+    }
+
     public function getPostdetails(Request $request) 
     { 
         $user = Auth::user(); 
-        $id = $request->get('id');
+        $id = $user->id;
+        $postid = $request->get('post_id');
 
-        $userdetail = DB::table('post')->where('id',$id)->get(['email']);
+        // $userdetail = DB::table('post')->where('id',$id)->get(['email']);
+        $data = array('user_id' => $id,
+                'post_id' => $postid,
+                'created_at' => now()
+            );
 
-        return response()->json(['success' => $userdetail], $this-> successStatus); 
+        DB::table('view_request')->insert($data);
+        // return response()->json(['success' => $userdetail], $this-> successStatus); 
+        return response()->json($this-> successStatus); 
     } 
 
     public function createPost(Request $request)

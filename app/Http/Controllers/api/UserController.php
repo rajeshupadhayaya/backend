@@ -67,9 +67,9 @@ public $successStatus = 200;
         
         $user->token()->revoke();
 
-        $request->session()->flush();
+        // $request->session()->flush();
 
-        $request->session()->regenerate();
+        // $request->session()->regenerate();
 
         return response()->json($this-> successStatus);
         
@@ -80,4 +80,8 @@ public $successStatus = 200;
         $user = Auth::user(); 
         return response()->json(['success' => $user], $this-> successStatus); 
     } 
+
+    public function validateUser(){
+        $user = Auth::user(); 
+    }
 }
