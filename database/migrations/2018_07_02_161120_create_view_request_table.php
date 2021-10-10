@@ -17,8 +17,8 @@ class CreateViewRequestTable extends Migration
             $table->increments('id');
             $table->integer('user_id');
             $table->boolean('isapproved')->nullable();
+            $table->integer('post_id');
             $table->timestamps();
-
         });
     }
 
