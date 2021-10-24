@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 
 Route::post('admin/login', 'API\AdminController@login');
 Route::post('login', 'API\UserController@login');
+Route::post('sociallogin', 'API\UserController@sociallogin');
 Route::post('register', 'API\UserController@register');
 Route::get('getpost/{query?}', 'API\PostController@getPost');
 Route::get('viewpost/{slug}', 'API\PostController@viewPost');
@@ -31,6 +32,7 @@ Route::get('search/{query?}', 'API\SearchController@findJob');
 Route::post('verifyEmail', 'API\UserController@verifyEmail');
 Route::group(['middleware' => 'auth:api'], function () {
 	Route::get('validateuser', 'API\UserController@validateUser');
+	Route::get('my-jobs', 'API\UserController@myPost');
 	Route::post('logout', 'API\UserController@logout');
 	Route::post('postdetails', 'API\PostController@getPostdetails');
 	Route::post('createpost', 'API\PostController@createPost');

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Post;
 use App\Notifications\EmailVerify;
 use App\User;
 use App\Models\VerifyUser;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Validator;
@@ -36,6 +38,41 @@ class UserController extends Controller
         } else {
             return response()->json(['error' => 'Unauthorised'], 401);
         }
+    }
+    public function sociallogin(Request $request)
+    {
+        $googleToken = $request->googleToken;
+        // Log::debug($googleToken);
+        try {
+
+            $client = new \GuzzleHttp\Client(['headers' => ['Authorization' => 'Bearer ' . $googleToken]]);
+            $client_req = $client->get('https://www.googleapis.com/oauth2/v3/userinfo?alt=json');
+            $response = json_decode($client_req->getBody()->getContents());
+            Log::debug(['resp', $response]);
+            if ($response) {
+                $user = User::where(['email' => $response->email])->first();
+                Log::debug(["user", $user]);
+                if (!$user) {
+                    $input = [
+                        'email' => $response->email,
+                        'image' => $response->picture,
+                        'name' => $response->name,
+                        'isemailverified' => true,
+                        'issocial' => true
+                    ];
+                    $user = User::create($input);
+                }
+
+                $access_token =  $user->createToken('MyApp')->accessToken;
+                return response()->json(['access_token' => $access_token], $this->successStatus);
+            } else {
+                return response()->json(['error' => 'Unauthorised'], 401);
+            }
+        } catch (Exception $e) {
+            Log::info($e);
+            return response()->json(['error' => 'Unauthorised'], 401);
+        }
+        return 200;
     }
     /** 
      * Register api 
@@ -150,5 +187,14 @@ class UserController extends Controller
         } else {
             return response()->json(["error" => "Link Expired, Please login <a href=/login>here</a>"], $this->notFound);
         }
+    }
+
+    public function myPost(Request $request)
+    {
+        $user = Auth::user();
+        $post = Post::where('user_id', '=', $user->id)
+            ->orderBy('created_at', 'desc')->get();
+
+        return response()->json(['data' => $post], $this->successStatus);
     }
 }
