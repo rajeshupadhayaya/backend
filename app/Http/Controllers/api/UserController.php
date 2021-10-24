@@ -4,16 +4,23 @@ namespace App\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Notifications\EmailVerify;
 use App\User;
+use App\Models\VerifyUser;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class UserController extends Controller
 {
     public $successStatus = 200;
     public $unAuthorizeStatus = 401;
     public $badDataStatus = 402;
+    public $notFound = 404;
     /** 
      * login api 
      * 
@@ -113,9 +120,35 @@ class UserController extends Controller
         return response()->json(["success" => "Password changed successfully !"]);
     }
 
+    public function generateVerifyEmail(Request $request)
+    {
+        $user = Auth::user();
+
+        VerifyUser::where(['user_id' => $user->id])->delete();
+
+        VerifyUser::create([
+            'user_id' => $user->id,
+            'token' => sha1(time())
+        ]);
+
+        $user->notify(new EmailVerify($user));
+        return response()->json(["success" => "We have sent a verification link to your registered Email Id."]);
+    }
     public function verifyEmail(Request $request)
     {
-        auth()->user()->sendEmailVerificationNotification();
-        return redirect()->back()->with("success", "We have sent a verification link to your registered Email Id.");
+
+        $user_id = $request->id;
+        $token = $request->token;
+        $isToken = VerifyUser::where(['user_id' => $user_id, 'token' => $token, 'active' => true])->first();
+
+        if ($isToken) {
+            $isToken->update(['active' => false]);
+            $user = User::find($user_id);
+            $user->isemailverified  = true;
+            $user->save();
+            return response()->json(["success" => "Thank you for verifying your Email id, Please login <a href=/login>here</a>"], $this->successStatus);
+        } else {
+            return response()->json(["error" => "Link Expired, Please login <a href=/login>here</a>"], $this->notFound);
+        }
     }
 }

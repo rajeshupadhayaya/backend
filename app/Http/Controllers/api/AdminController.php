@@ -4,10 +4,15 @@ namespace App\Http\Controllers\API;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Mail\ContactDetails as MailContactDetails;
+use App\Mail\PostApproved as MailPostApproved;
+use App\Models\Post;
+use App\Models\ViewRequest as ViewRequestModel;
 use App\User;
 use Illuminate\Support\Facades\Auth;
-use Validator;
 use DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminController extends Controller
 {
@@ -30,7 +35,7 @@ class AdminController extends Controller
         }
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
         $user = Auth::user();
 
@@ -49,10 +54,9 @@ class AdminController extends Controller
         $user = Auth::user();
 
         if ($user->isadmin) {
-            $post = DB::table('post')
-                ->where('approved', '=', false, 'and', 'show', '=', false)
+            $post = Post::with('user')->where(['approved' => false, 'show' => false])
                 ->orderBy('created_at', 'desc')
-                ->get(['id', 'title', 'email', 'description', 'created_at']);
+                ->get();
             return response()->json(['data' => $post], $this->successStatus);
         } else {
             return response()->json(['error' => 'Unauthorised'], 401);
@@ -64,12 +68,13 @@ class AdminController extends Controller
     {
         $user = Auth::user();
         if ($user->isadmin) {
-            $post = DB::table('view_request')
-                ->join('users', 'users.id', '=', 'view_request.user_id')
-                ->where('view_request.isapproved', '=', Null)
-                ->orderBy('view_request.created_at', 'desc')
-                ->select(['view_request.id', 'users.email', 'users.name', 'view_request.post_id'])
-                ->get();
+            $post = ViewRequestModel::with('user', 'post')->where(['isapproved' => Null])->get();
+            // $post = DB::table('view_request')
+            //     ->join('users', 'users.id', '=', 'view_request.user_id')
+            //     ->where('view_request.isapproved', '=', Null)
+            //     ->orderBy('view_request.created_at', 'desc')
+            //     ->select(['view_request.id', 'users.email', 'users.name', 'view_request.post_id'])
+            //     ->get();
 
             return response()->json(['data' => $post], $this->successStatus);
         } else {
@@ -77,18 +82,22 @@ class AdminController extends Controller
         }
     }
 
-    public function approvePost(Request $request)
+    public function updatePost(Request $request)
     {
 
         $user = Auth::user();
         if ($user->isadmin) {
             $id = $request->get('post_id');
-            $approved = $request->get('status');
+            $status = $request->get('status');
 
-            $post = DB::table('post')
-                ->where('id', $id)
-                ->update(['show' => $approved, 'approved' => $approved,  'updated_at' => now()]);
+            $post = Post::with('user')->where('id', $id)->first();
+            Log::debug($post);
+            $post->update(['show' => $status, 'approved' => $status,  'updated_at' => now()]);
             // send mail to user regarding publishing of post.
+            if ($status) {
+                Mail::to($post->user->email)->send(new MailPostApproved($post->user, $post));
+            }
+
 
             return response()->json($this->successStatus);
         } else {
@@ -96,10 +105,9 @@ class AdminController extends Controller
         }
     }
 
+
     public function approveviewrequest(Request $request)
     {
-
-
         $user = Auth::user();
 
         if ($user->isadmin) {
@@ -107,10 +115,18 @@ class AdminController extends Controller
             $id = $request->get('req_id');
             $approved = $request->get('status');
 
-            $post = DB::table('view_request')
-                ->where('id', $id)
-                ->update(['isapproved' => $approved, 'updated_at' => now()]);
+            $viewRequest = ViewRequestModel::with('post.user', 'user')->find($id);
 
+            $viewRequest->update(['isapproved' => $approved,  'updated_at' => now()]);
+            Log::debug($viewRequest);
+            // $post = Post::find($viewRequest->post->user_id)
+            if ($approved) {
+                // $user->notify(new ContactDetails($user, $viewRequest));
+                Mail::to($viewRequest->user->email)->send(new MailContactDetails($user, $viewRequest));
+            }
+            // $post = DB::table('view_request')
+            //     ->where('id', $id)
+            //     ->update(['isapproved' => $approved, 'updated_at' => now()]);
 
             return response()->json($this->successStatus);
         } else {

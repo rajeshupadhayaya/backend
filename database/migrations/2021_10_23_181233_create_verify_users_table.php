@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateViewRequestTable extends Migration
+class CreateVerifyUsersTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,14 +13,12 @@ class CreateViewRequestTable extends Migration
      */
     public function up()
     {
-        Schema::create('view_requests', function (Blueprint $table) {
-            $table->increments('id');
+        Schema::create('verify_users', function (Blueprint $table) {
+            $table->bigIncrements('id');
             $table->integer('user_id')->unsigned()->nullable();
-            $table->boolean('isapproved')->nullable();
-            $table->integer('post_id')->unsigned()->nullable();
+            $table->string('token');
+            $table->boolean('active')->default(true);
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('post_id')->references('id')->on('posts')->onDelete('cascade');
-
             $table->timestamps();
         });
     }
@@ -32,6 +30,6 @@ class CreateViewRequestTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('view_request');
+        Schema::dropIfExists('verify_users');
     }
 }

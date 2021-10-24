@@ -13,12 +13,15 @@ class CreatePostTable extends Migration
      */
     public function up()
     {
-        Schema::create('post', function (Blueprint $table) {
+        Schema::create('posts', function (Blueprint $table) {
             $table->increments('id');
-            $table->string('user');
-            $table->string('email');
+            $table->integer('user_id')->unsigned();
             $table->text('description');
             $table->string('title');
+            $table->string('slug');
+            $table->boolean('approved')->default(false);
+            $table->boolean('show')->default(false);
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->timestamps();
         });
     }
